@@ -1,0 +1,41 @@
+Detailed Explanation of How Multi-Threading is Brought In
+Multi-threading is implemented using C++11's <thread> library, which allows concurrent execution. Here's how it's integrated step-by-step:
+
+Decide on Parallelism Strategy:
+We parallelize the outer i-loop (rows of C). Why? Each row computation is independent, and rows are contiguous in memory (good for cache). This is coarse-grained parallelism: Fewer threads, less overhead.
+For m rows and T threads, each thread gets roughly m/T rows.
+If m < T, some threads get 0 rows (but code handles it by adjusting end_row).
+
+Work Splitting (Load Balancing):
+rows_per_thread = m / num_threads: Integer division for base share.
+extra_rows = m % num_threads: Distributes remainder evenly (first 'extra_rows' threads get +1 row).
+Cumulative start_row ensures contiguous, non-overlapping ranges (e.g., for m=4, T=2: Thread 0: rows 0-2; Thread 1: 2-4).
+This is static load balancing—simple and fair assuming uniform work per row.
+
+Thread Creation:
+std::thread objects are created in a loop.
+emplace_back constructs the thread in-place, passing the function (compute_rows) and its arguments.
+Threads start running immediately upon creation (asynchronous).
+Args use std::cref/std::ref to pass references (avoids copying large matrices).
+
+Execution Model:
+Each thread runs compute_rows concurrently on its row slice.
+The OS schedules threads on available CPU cores (e.g., on a 4-core CPU with 4 threads, up to 4x speedup ideally).
+Inside each thread: Standard triple-loop, but only on assigned i-range.
+
+Synchronization and Joining:
+No explicit locks (std::mutex) needed because:
+Reads from A/B are safe (const, shared).
+Writes to C are to unique rows (no overlap).
+
+join(): Main thread waits for all workers to finish. This is a barrier—ensures C is fully computed before return.
+Without join, main could return incomplete C (race condition).
+
+Overhead and Limitations:
+Thread creation/joining has overhead (e.g., ~microseconds per thread), so for small matrices (like 2×2), it's slower than sequential. Benefits shine for large m (e.g., 1000+ rows).
+No error handling in threads—if one throws, it terminates the program (in practice, wrap in try-catch inside compute_rows).
+Scalability: Limited by CPU cores. For hyper-threading, num_threads = std::thread::hardware_concurrency() is a good auto-detect.
+Not tiled/blocked: For huge matrices, add blocking inside compute_rows for better cache.
+
+
+This approach achieves parallelism without libs by manually managing threads. For comparison, a sequential version would just call compute_rows(..., 0, m) in one go. If you run this on larger matrices, you can measure speedup with timing (e.g., add <chrono>). Want modifications or a sequential version for contrast? 😄
