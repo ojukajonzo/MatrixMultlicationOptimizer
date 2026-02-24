@@ -1,0 +1,25 @@
+function matrixMultiply(matrixA, matrixB):
+ 
+  // Get dimensions
+  rowsA = numberOfRows(matrixA)
+  colsA = numberOfColumns(matrixA)
+  colsB = numberOfColumns(matrixB)
+  rowsB = numberOfRows(matrixB)
+
+  // Check if matrices can be multiplied
+  if colsA != rowsB:
+    return "Error: Matrices cannot be multiplied"
+
+  // Initialize result matrix with zeros
+  resultMatrix = new matrix with dimensions rowsA x colsB
+  for i from 0 to rowsA-1:
+    for j from 0 to colsB-1:
+      resultMatrix[i][j] = 0
+
+  // Perform matrix multiplication
+  for i from 0 to rowsA-1:          //Iterate through rows of matrixA
+    for j from 0 to colsB-1:      //Iterate through columns of matrixB
+      for k from 0 to colsA-1:  //OR numberOfRows(matrixB)-1, Iterate through columns of matrixA or rows of matrixB
+        resultMatrix[i][j] = resultMatrix[i][j] + (matrixA[i][k] * matrixB[k][j])
+
+  return resultMatrix
